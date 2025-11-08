@@ -3,93 +3,209 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Campaign Monthly Spike/Drop Analyzer — Final (Fixed)</title>
+  <title>Campaign Monthly Spike/Drop Analyzer — Clean UI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/modern-css-reset/dist/reset.min.css">
   <style>
     :root{
-      --bg:#0f172a;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--green:#16a34a;--red:#dc2626;
+      /* Neutral dark theme */
+      --bg: #0b1220;
+      --surface: #0e1628;
+      --surface-2: #13203a;
+      --border: rgba(255,255,255,0.08);
+      --muted: #9db0c7;
+      --text: #e8f0fb;
+      --accent: #06b6d4;
+      --accent-2: #0ea5e9;
+      --green:#22c55e; --red:#ef4444;
+      --shadow: 0 4px 24px rgba(0,0,0,0.35);
+      --radius: 12px;
     }
-    body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:linear-gradient(180deg,#071028 0%, #071022 60%);color:#e6eef8;padding:20px}
-    .container{max-width:1250px;margin:0 auto}
-    header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
-    h1{font-size:20px;margin:0}
-    .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
-    .card{background:rgba(255,255,255,0.03);padding:14px;border-radius:10px}
-    .chooseFileLabel{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021024;padding:12px 20px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 8px 20px rgba(2,6,23,0.5)}
-    .thresholds{display:flex;gap:8px;align-items:flex-end;padding:8px}
-    .thresholds strong{display:block;color:#e6eef8;margin-bottom:6px}
-    .thresholds input{width:90px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
-    button{background:linear-gradient(90deg,var(--accent),#7c3aed);border:none;padding:8px 12px;border-radius:8px;color:#021024;font-weight:600;cursor:pointer}
-    .tabs{display:flex;gap:8px;margin-top:8px}
-    .tabBtn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;cursor:pointer;color:var(--muted)}
-    .tabBtn.active{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021024}
-    table{width:100%;border-collapse:collapse;margin-top:8px}
-    th,td{padding:8px 10px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.04);font-size:13px;vertical-align:top}
-    th{color:var(--muted);font-weight:600}
-    .green{color:var(--green);font-weight:700}
-    .red{color:var(--red);font-weight:700}
-    #statusMsg{margin-top:10px;color:var(--muted)}
-    .note{color:#dbeafe;font-size:13px}
-    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
-    .small{font-size:12px;color:var(--muted)}
+    html,body{height:100%}
+    body{
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      background: radial-gradient(1200px 600px at 20% -10%, #10203f 0%, transparent 60%),
+                  radial-gradient(900px 500px at 110% -20%, #0a1a32 0%, transparent 60%),
+                  var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+      -webkit-font-smoothing: antialiased;
+      padding: 24px;
+    }
+    .container{max-width: 1200px; margin: 0 auto}
+
+    /* ---------- header ---------- */
+    header{
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+    .topbar{
+      display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap;
+    }
+    h1{font-size: 22px; font-weight: 700; margin:0}
+    .subtitle{font-size: 13px; color: var(--muted); margin-top: 6px}
+
+    /* ---------- cards & layout ---------- */
+    .card{
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+    }
+    .controls{
+      display: grid;
+      grid-template-columns: minmax(220px,auto) 1fr auto auto;
+      gap: 12px;
+      align-items: stretch;
+    }
+    @media (max-width: 900px){
+      .controls{ grid-template-columns: 1fr; }
+    }
+
+    /* ---------- inputs & buttons ---------- */
+    .file-wrap{display:flex; gap:10px; align-items:center}
+    .visually-hidden{ position:absolute !important; width:1px; height:1px; padding:0; margin:-1px; overflow:hidden; clip:rect(0,0,0,0); white-space:nowrap; border:0; }
+
+    .btn{
+      appearance: none; border: 1px solid var(--border); background: transparent;
+      color: var(--text); padding: 10px 14px; border-radius: 10px; font-weight: 600; cursor: pointer;
+      transition: transform .04s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease;
+    }
+    .btn:hover{ border-color: rgba(255,255,255,0.18) }
+    .btn:active{ transform: translateY(1px) }
+    .btn:focus-visible{ outline: 2px solid var(--accent); outline-offset: 2px }
+
+    .btn-primary{ background: linear-gradient(180deg, var(--accent), var(--accent-2)); color:#03131a; border-color: transparent }
+    .btn-primary:hover{ filter: brightness(1.05) }
+    .btn-ghost{ background: rgba(255,255,255,0.03) }
+
+    .chooseFileLabel{ display:inline-flex; align-items:center; gap:10px; }
+    .chooseFileLabel .chip{
+      background: rgba(255,255,255,0.06); border:1px dashed var(--border); padding:8px 10px; border-radius:10px; font-size:13px; color: var(--muted);
+    }
+
+    .fieldset{ display:flex; flex-direction:column; gap:10px }
+    .thresholds{ display:grid; grid-template-columns: repeat(5, minmax(90px, 1fr)); gap: 10px; align-items:end }
+    .thresholds strong{ color: var(--text) }
+    .input{
+      width:100%; padding:10px 12px; border-radius:10px; background: rgba(255,255,255,0.02);
+      border:1px solid var(--border); color: var(--text); font: inherit
+    }
+    .select{ width:100%; padding:10px 12px; border-radius:10px; background: rgba(255,255,255,0.02); border:1px solid var(--border); color: var(--text) }
+
+    /* ---------- tabs ---------- */
+    .tabs{ display:flex; gap:8px; background: var(--surface); border: 1px solid var(--border); border-radius: 999px; padding:6px; }
+    .tabBtn{ border:none; background: transparent; color: var(--muted); font-weight:600; padding:8px 14px; border-radius: 999px; cursor:pointer }
+    .tabBtn.active{ background: rgba(6,182,212,0.18); color: var(--text) }
+
+    /* ---------- tables ---------- */
+    .table-wrap{ overflow:auto; border:1px solid var(--border); border-radius: var(--radius); }
+    table{ width:100%; border-collapse: collapse; font-size: 13px; }
+    thead th{ position: sticky; top: 0; background: var(--surface-2); color: var(--muted); text-align:left; font-weight:600; }
+    th, td{ padding: 10px 12px; border-bottom: 1px dashed rgba(255,255,255,0.06); vertical-align: top }
+    tbody tr:hover{ background: rgba(255,255,255,0.02) }
+
+    .kpi-green{ color: var(--green); font-weight: 700 }
+    .kpi-red{ color: var(--red); font-weight: 700 }
+    .note{ color:#dbeafe }
+
+    #statusMsg{ margin-top: 8px; color: var(--muted) }
+    footer{ margin-top: 18px; color: var(--muted); font-size:13px; text-align:center }
+    .small{ font-size: 12px; color: var(--muted) }
+    .infobar{ display:flex; gap:10px; align-items:flex-start; background: rgba(6,182,212,0.08); border:1px solid rgba(6,182,212,0.25); border-radius: var(--radius); padding:12px; }
+    .infobar em{ color: var(--muted) }
   </style>
 </head>
 <body>
   <div class="container">
     <header>
-      <div>
-        <h1>📊 Campaign Monthly Spike/Drop Analyzer — Final</h1>
-        <div class="small">Upload .xlsx (Month, Campaign, Spend, Impressions, Clicks). CTR, CPM, CPC auto-calculated. Export includes Good / Mixed / Overall Decline + Description + Raw Data.</div>
+      <div class="topbar">
+        <div>
+          <h1>Campaign Monthly Spike/Drop Analyzer</h1>
+          <p class="subtitle">Upload .xlsx (Month, Campaign, Spend, Impressions, Clicks). CTR, CPM, CPC auto-calculated. Export includes Good / Mixed / Overall Decline + Description + Raw Data.</p>
+        <div class="infobar" role="note" aria-label="About this report">
+          <div>ℹ️</div>
+          <div>
+            <strong>About this report</strong><br>
+            This analyzer compares the latest month’s campaign performance against either the <em>average of all previous months</em> or <em>just the previous month</em>. It flags significant spikes or drops in Spend, CTR, CPC, and CPM, and groups campaigns as <strong>Good</strong>, <strong>Mixed</strong>, or <strong>Overall Decline</strong>.
+          </div>
+        </div>
+      </div>
       </div>
 
       <div class="controls">
-        <label class="chooseFileLabel">📂 Choose File
-          <input id="file" type="file" accept=".xls,.xlsx,.csv" />
-        </label>
+        <div class="card file-wrap">
+          <label class="chooseFileLabel">
+            <input id="file" class="visually-hidden" type="file" accept=".xls,.xlsx,.csv" />
+            <button class="btn btn-primary" type="button" onclick="document.getElementById('file').click()">📂 Choose File</button>
+            <span id="fileName" class="chip">No file selected</span>
+          </label>
+        </div>
 
-        <div class="card thresholds">
+        <div class="card fieldset">
           <strong>Thresholds (%)</strong>
-          <div style="display:flex;gap:8px;align-items:center">
-            <div><label class="small">Spend</label><input id="th_spend" type="number" min="0" value="50"></div>
-            <div><label class="small">CPC</label><input id="th_cpc" type="number" min="0" value="50"></div>
-            <div><label class="small">CPM</label><input id="th_cpm" type="number" min="0" value="50"></div>
-            <div><label class="small">CTR</label><input id="th_ctr" type="number" min="0" value="50"></div>
+          <div class="thresholds">
+            <label>
+              <span class="small">Spend</span>
+              <input id="th_spend" class="input" type="number" min="0" value="50" />
+            </label>
+            <label>
+              <span class="small">CPC</span>
+              <input id="th_cpc" class="input" type="number" min="0" value="50" />
+            </label>
+            <label>
+              <span class="small">CPM</span>
+              <input id="th_cpm" class="input" type="number" min="0" value="50" />
+            </label>
+            <label>
+              <span class="small">CTR</span>
+              <input id="th_ctr" class="input" type="number" min="0" value="50" />
+            </label>
+            <div>
+              <span class="small">&nbsp;</span>
+              <button id="analyze" class="btn btn-primary" type="button">🔍 Analyze</button>
+            </div>
           </div>
         </div>
 
-        <div class="card" style="display:flex;flex-direction:column;gap:6px">
+        <div class="card fieldset">
           <label class="small"><strong>Comparison Mode</strong></label>
-          <select id="compareMode" style="padding:6px;border-radius:8px;background:transparent;color:#e6eef8;border:1px solid rgba(255,255,255,0.08);">
+          <select id="compareMode" class="select">
             <option value="previous">Current vs Previous Month</option>
             <option value="average">Current vs Avg of All Previous Months</option>
           </select>
         </div>
 
-        <button id="analyze">🔍 Analyze</button>
-        <button id="downloadSummary" style="display:none">⬇️ Download Summary</button>
+        <div class="card fieldset" style="justify-content:center">
+          <button id="downloadSummary" class="btn btn-ghost" style="display:none" type="button">⬇️ Download Summary</button>
+          <span class="small">Sorted by absolute % change</span>
+        </div>
       </div>
-
     </header>
 
     <div id="statusMsg">Load a file to start.</div>
 
-    <div id="previewSection" class="card" style="margin-top:12px;display:none">
+    <section id="previewSection" class="card" style="margin-top:12px; display:none">
       <h3 style="margin:0 0 8px 0">🔎 File Preview (first 5 rows)</h3>
-      <div style="overflow:auto"><table id="previewTable"><thead></thead><tbody></tbody></table></div>
-    </div>
+      <div class="table-wrap"><table id="previewTable"><thead></thead><tbody></tbody></table></div>
+    </section>
 
-    <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between">
+    <section style="margin-top:12px; display:flex; align-items:center; justify-content:space-between; gap:12px">
       <div class="tabs">
         <button class="tabBtn active" data-tab="good" id="tabGood">Good</button>
         <button class="tabBtn" data-tab="mixed" id="tabMixed">Mixed</button>
         <button class="tabBtn" data-tab="decline" id="tabDecline">Overall Decline</button>
       </div>
-      <div class="small">Sorted by absolute % change (desc)</div>
-    </div>
+    </section>
 
-    <div id="summarySection" class="card" style="margin-top:12px;display:none">
-      <h3 style="margin:0 0 8px 0">📈 Final Month Summary (collapsed)</h3>
-      <div style="overflow:auto">
+    <section id="summarySection" class="card" style="margin-top:12px; display:none">
+      <h3 style="margin:0 0 8px 0">📈 Final Month Summary</h3>
+      <div class="table-wrap">
         <table id="summaryTable">
           <thead>
             <tr><th>Campaign</th><th>Base Metric</th><th>Previous</th><th>Current</th><th>% Change</th><th>Direction</th><th>Performance</th><th>Note</th></tr>
@@ -97,14 +213,14 @@
           <tbody></tbody>
         </table>
       </div>
-    </div>
+    </section>
 
-    <footer>Campaigns with “Drive New Website Visitors” and “Re-Engage Website Visitors” are merged.</footer>
+    <footer>Campaigns with “Drive New Website Visitors”, “Re-Engage Website Visitors”, and “Drive Form Submissions” are merged.</footer>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script>
-    /* ---------- helpers ---------- */
+    /* ---------- helpers (unchanged core logic) ---------- */
     function showStatus(msg, color='var(--muted)'){const s=document.getElementById('statusMsg'); s.style.color=color; s.textContent = msg;}
     function parseMonthToKey(v){
       try{
@@ -116,22 +232,15 @@
         return s;
       }catch{return v;}
     }
-    function excelSerialToDate(serial){
-      // convert Excel serial (assumes 1900 date system; Excel incorrectly treats 1900 as leap year but using standard conversion works for typical serials)
-      return new Date(Date.UTC(1899,11,30) + serial * 86400000);
-    }
+    function excelSerialToDate(serial){ return new Date(Date.UTC(1899,11,30) + serial * 86400000); }
     function pnum(v){ if(v===''||v==null) return 0; const n=Number(String(v).replace(/[^0-9eE+\-.]/g,'')); return isNaN(n)?0:n; }
     function fmt(val, metric){ if(metric === 'CTR') return val.toFixed(2)+'%'; if(['CPM','CPC','Spend'].includes(metric)) return '$'+val.toFixed(2); return val.toFixed(2); }
 
-    /* Note builder with consistent verbs and capitalization.
-       baseMetric bolded in HTML if forHtml=true.
-    */
     function buildNote(changeMap, baseMetric, forHtml){
       const items = Object.keys(changeMap)
         .map(m => ({ m: m.toUpperCase(), pct: changeMap[m] }))
         .filter(x => x.pct !== null && !isNaN(x.pct) && Math.abs(x.pct) > 0)
         .sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct));
-
       if(!items.length) return '';
       const main = items[0];
       const mainVerb = main.pct > 0 ? 'spiked' : 'dropped';
@@ -148,7 +257,6 @@
       }
       return text;
     }
-
     function metricPerformance(metric, pctChange){
       if(pctChange === null || isNaN(pctChange)) return 'Neutral';
       if(['Spend','CTR'].includes(metric)) return pctChange > 0 ? 'Good' : 'Bad';
@@ -156,13 +264,11 @@
       return 'Neutral';
     }
 
-    /* ---------- state ---------- */
-    let rawData = [];
-    let processed = { good: [], mixed: [], decline: [] };
+    let rawData = []; let processed = { good: [], mixed: [], decline: [] };
 
-    /* ---------- file load ---------- */
     document.getElementById('file').addEventListener('change', e => {
       const f = e.target.files[0];
+      document.getElementById('fileName').textContent = f ? f.name : 'No file selected';
       if(!f){ showStatus('❌ No file selected','var(--red)'); return; }
       showStatus('📥 Reading file...','var(--accent)');
       const r = new FileReader();
@@ -188,7 +294,6 @@
       r.readAsArrayBuffer(f);
     });
 
-    /* tab switching */
     const tabBtns = document.querySelectorAll('.tabBtn');
     tabBtns.forEach(b => b.addEventListener('click', () => {
       tabBtns.forEach(x => x.classList.remove('active'));
@@ -202,8 +307,8 @@
       const arr = (tab === 'good') ? processed.good : (tab === 'mixed' ? processed.mixed : processed.decline);
       arr.forEach(s => {
         const tr = document.createElement('tr');
-        const colorClass = ((s.BaseMetric === 'Spend' || s.BaseMetric === 'CTR') ? (s.Direction === 'Spike' ? 'green' : 'red') : (s.Direction === 'Spike' ? 'red' : 'green'));
-        const perfClass = s.Performance === 'Good' ? 'green' : (s.Performance === 'Bad' ? 'red' : '');
+        const colorClass = ((s.BaseMetric === 'Spend' || s.BaseMetric === 'CTR') ? (s.Direction === 'Spike' ? 'kpi-green' : 'kpi-red') : (s.Direction === 'Spike' ? 'kpi-red' : 'kpi-green'));
+        const perfClass = s.Performance === 'Good' ? 'kpi-green' : (s.Performance === 'Bad' ? 'kpi-red' : '');
         const htmlNote = buildNote(s.changeMap, s.BaseMetric, true);
         tr.innerHTML = `<td>${s.Campaign}</td>
                         <td>${s.BaseMetric}</td>
@@ -217,7 +322,6 @@
       });
     }
 
-    /* analysis */
     document.getElementById('analyze').addEventListener('click', () => {
       if(!rawData.length){ showStatus('⚠️ Please upload a valid file first.','var(--red)'); return; }
       showStatus('🔍 Analyzing...','var(--accent)');
@@ -232,12 +336,10 @@
           colMap[c] = f;
         }
 
-        // aggregate
-        const campaigns = {};
-        const months = new Set();
+        const campaigns = {}; const months = new Set();
         rawData.forEach(r => {
           let name = String(r[colMap['Campaign']]).trim();
-          name = name.replace(/ - (Drive New|Re-Engage) Website Visitors$/i,'');
+          name = name.replace(/ - (?:(?:Drive New|Re-Engage) Website Visitors|Drive Form Submissions)$/i,'');
           const m = parseMonthToKey(r[colMap['Month']]);
           months.add(m);
           if(!campaigns[name]) campaigns[name] = {};
@@ -248,7 +350,6 @@
           c.Clicks += pnum(r[colMap['Clicks']]);
         });
 
-        // derived
         Object.values(campaigns).forEach(mths => {
           Object.values(mths).forEach(v => {
             v.CTR = v.Impressions ? (v.Clicks / v.Impressions) * 100 : 0;
@@ -263,7 +364,6 @@
         const ths = { Spend:+th_spend.value||0, CPC:+th_cpc.value||0, CPM:+th_cpm.value||0, CTR:+th_ctr.value||0 };
         const mode = document.getElementById('compareMode').value;
 
-        // percent changes
         const changeRecords = {}, baselineRecords = {};
         Object.keys(campaigns).forEach(camp => {
           const mths = campaigns[camp];
@@ -288,10 +388,7 @@
             baseline.CTR = sums.CTR / cnt;
           } else {
             const prev = mths[sorted[sorted.length-2]];
-            baseline.Spend = prev.Spend;
-            baseline.CPM = prev.CPM;
-            baseline.CPC = prev.CPC;
-            baseline.CTR = prev.CTR;
+            baseline.Spend = prev.Spend; baseline.CPM = prev.CPM; baseline.CPC = prev.CPC; baseline.CTR = prev.CTR;
           }
           baselineRecords[camp] = {...baseline};
           const rec = { Spend:null, CPC:null, CPM:null, CTR:null };
@@ -302,7 +399,6 @@
           changeRecords[camp] = rec;
         });
 
-        // significant
         const significant = {};
         Object.keys(changeRecords).forEach(camp => {
           const rec = changeRecords[camp];
@@ -318,7 +414,6 @@
           if(sigs.length) significant[camp] = sigs;
         });
 
-        // collapsed rows
         const collapsedRows = [];
         Object.keys(significant).forEach(camp => {
           const sigs = significant[camp];
@@ -329,48 +424,30 @@
           const prevLabel = mode === 'average' ? `Avg of ${sorted.slice(0,-1).length} months` : sorted[sorted.length-2];
           const prevVal = mode === 'average' ? (sorted.slice(0,-1).reduce((a,b)=>a + mths[b][base.metric],0) / sorted.slice(0,-1).length) : mths[sorted[sorted.length-2]][base.metric];
           const currVal = mths[sorted[sorted.length-1]][base.metric];
-          const change = base.pct;
-          const direction = change > 0 ? 'Spike' : 'Drop';
+          const change = base.pct; const direction = change > 0 ? 'Spike' : 'Drop';
 
-          const changeMap = {};
-          ['Spend','CPC','CPM','CTR'].forEach(m => {
-            const found = sigs.find(s => s.metric === m);
-            changeMap[m] = found ? found.pct : null;
+          const changeMap = {}; ['Spend','CPC','CPM','CTR'].forEach(m => {
+            const found = sigs.find(s => s.metric === m); changeMap[m] = found ? found.pct : null;
           });
 
           const goods = sigs.filter(s => metricPerformance(s.metric, s.pct) === 'Good').length;
           const bads = sigs.filter(s => metricPerformance(s.metric, s.pct) === 'Bad').length;
-          let performance = 'Mixed';
-          if(goods > 0 && bads === 0) performance = 'Good';
-          else if(bads > 0 && goods === 0) performance = 'Bad';
+          let performance = 'Mixed'; if(goods > 0 && bads === 0) performance = 'Good'; else if(bads > 0 && goods === 0) performance = 'Bad';
 
           const notePlain = buildNote(changeMap, base.metric, false);
-          const noteHtml = buildNote(changeMap, base.metric, true);
 
           collapsedRows.push({
-            Campaign: camp,
-            BaseMetric: base.metric,
-            PrevLabel: prevLabel,
-            PrevVal: prevVal,
-            CurMonth: lastMonth,
-            CurVal: currVal,
-            Change: change,
-            Direction: direction,
-            Performance: performance,
-            NotePlain: notePlain,
-            NoteHtml: noteHtml,
+            Campaign: camp, BaseMetric: base.metric,
+            PrevLabel: prevLabel, PrevVal: prevVal,
+            CurMonth: lastMonth, CurVal: currVal,
+            Change: change, Direction: direction,
+            Performance: performance, NotePlain: notePlain,
             changeMap
           });
         });
 
-        // partition
         const good = [], mixed = [], decline = [];
-        collapsedRows.forEach(r => {
-          if(r.Performance === 'Good') good.push(r);
-          else if(r.Performance === 'Bad') decline.push(r);
-          else mixed.push(r);
-        });
-
+        collapsedRows.forEach(r => { if(r.Performance === 'Good') good.push(r); else if(r.Performance === 'Bad') decline.push(r); else mixed.push(r); });
         const sortByAbs = arr => arr.sort((a,b)=>Math.abs(b.Change) - Math.abs(a.Change));
         sortByAbs(good); sortByAbs(mixed); sortByAbs(decline);
         processed = { good, mixed, decline };
@@ -382,17 +459,12 @@
         document.getElementById('tabDecline').textContent = `Overall Decline (${decline.length})`;
 
         showStatus(`✅ Analysis complete. Good: ${good.length}, Mixed: ${mixed.length}, Overall Decline: ${decline.length}.`, 'var(--green)');
-        document.getElementById('downloadSummary').style.display = 'inline-block';
-        document.getElementById('downloadSummary').onclick = () => buildAndDownloadExcel({good,mixed,decline, rawData, mode, ths});
-      }catch(err){
-        showStatus('❌ Analysis failed: '+err.message,'var(--red)');
-      }
+        const dl = document.getElementById('downloadSummary'); dl.style.display = 'inline-block'; dl.onclick = () => buildAndDownloadExcel({good,mixed,decline, rawData, mode, ths});
+      }catch(err){ showStatus('❌ Analysis failed: '+err.message,'var(--red)'); }
     });
 
-    /* ---------- Excel builder ---------- */
     function buildAndDownloadExcel({good,mixed,decline, rawData, mode, ths}){
       const wb = XLSX.utils.book_new();
-
       function makeSheetFromRows(rows){
         const sheetData = rows.map(r => ({
           Campaign: r.Campaign,
@@ -408,23 +480,10 @@
         }));
         return XLSX.utils.json_to_sheet(sheetData);
       }
+      const wsGood = makeSheetFromRows(good); formatSheetColumnsPerRow(wsGood); XLSX.utils.book_append_sheet(wb, wsGood, 'Good Performance');
+      const wsMixed = makeSheetFromRows(mixed); formatSheetColumnsPerRow(wsMixed); XLSX.utils.book_append_sheet(wb, wsMixed, 'Mixed Performance');
+      const wsDecline = makeSheetFromRows(decline); formatSheetColumnsPerRow(wsDecline); XLSX.utils.book_append_sheet(wb, wsDecline, 'Overall Decline');
 
-      // Good
-      const wsGood = makeSheetFromRows(good);
-      formatSheetColumnsPerRow(wsGood);
-      XLSX.utils.book_append_sheet(wb, wsGood, 'Good Performance');
-
-      // Mixed
-      const wsMixed = makeSheetFromRows(mixed);
-      formatSheetColumnsPerRow(wsMixed);
-      XLSX.utils.book_append_sheet(wb, wsMixed, 'Mixed Performance');
-
-      // Decline
-      const wsDecline = makeSheetFromRows(decline);
-      formatSheetColumnsPerRow(wsDecline);
-      XLSX.utils.book_append_sheet(wb, wsDecline, 'Overall Decline');
-
-      // Description (removed Prepared By and Notes lines)
       const generationDate = (new Date()).toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', year:'numeric', month:'short', day:'numeric' });
       const descRows = [
         { Property: 'Report Name', Value: 'Campaign Monthly Spike/Drop Analyzer' },
@@ -435,41 +494,24 @@
         { Property: 'Performance Logic', Value: 'Spend & CTR: Spike = Good, Drop = Bad. CPM & CPC: Spike = Bad, Drop = Good.' },
         { Property: 'Sheet Descriptions', Value: 'Good Performance: all significant metrics Good. Mixed Performance: mix of Good & Bad. Overall Decline: all significant metrics Bad.' }
       ];
-      const wsDesc = XLSX.utils.json_to_sheet(descRows, { header: ['Property','Value'] });
-      wsDesc['!cols'] = [{ wch:30 }, { wch:70 }];
+      const wsDesc = XLSX.utils.json_to_sheet(descRows, { header: ['Property','Value'] }); wsDesc['!cols'] = [{ wch:30 }, { wch:70 }];
       XLSX.utils.book_append_sheet(wb, wsDesc, 'Description');
 
-      // Raw Data: convert Excel serial dates (numbers) in 'Month' to JS Date objects for proper formatting
-      const rawCopy = rawData.map(row => {
-        const r = {};
-        Object.keys(row).forEach(k => {
-          let v = row[k];
-          // if column is "Month" (case-insensitive), convert numeric serial to Date
-          if(k.toLowerCase() === 'month' && typeof v === 'number' && v > 0){
-            // convert serial -> Date
-            v = excelSerialToDate(v);
-          }
-          r[k] = v;
-        });
-        return r;
-      });
+      const rawCopy = rawData.map(row => { const r = {}; Object.keys(row).forEach(k => { let v = row[k]; if(k.toLowerCase() === 'month' && typeof v === 'number' && v > 0){ v = excelSerialToDate(v); } r[k] = v; }); return r; });
       const wsRaw = XLSX.utils.json_to_sheet(rawCopy);
-      // set widths
       wsRaw['!cols'] = Object.keys(rawCopy[0] || {}).map(k => ({ wch: Math.min(Math.max(String(k).length, 12), 40) }));
       XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw Data');
 
       XLSX.writeFile(wb, 'Campaign_Spike_Summary.xlsx');
     }
 
-    // Format sheet columns per row based on Base_Metric
     function formatSheetColumnsPerRow(ws){
       if(!ws || !ws['!ref']) return;
       const range = XLSX.utils.decode_range(ws['!ref']);
       const headers = {};
       for(let C=range.s.c; C<=range.e.c; ++C){
         const addr = XLSX.utils.encode_cell({r: range.s.r, c: C});
-        const cell = ws[addr];
-        if(cell && cell.v) headers[cell.v] = C;
+        const cell = ws[addr]; if(cell && cell.v) headers[cell.v] = C;
       }
       const idxBase = headers['Base_Metric'];
       const idxPrevVal = headers['Previous_Value'];
@@ -477,17 +519,10 @@
       const idxChange = headers['Change_Percent'];
 
       for(let R = range.s.r + 1; R <= range.e.r; ++R){
-        // format change percent
-        if(idxChange !== undefined){
-          const addr = XLSX.utils.encode_cell({r:R, c: idxChange});
-          if(ws[addr] && ws[addr].v !== undefined) ws[addr].z = '0.00%';
-        }
-        // decide formatting for Prev/Cur based on Base_Metric
+        if(idxChange !== undefined){ const addr = XLSX.utils.encode_cell({r:R, c: idxChange}); if(ws[addr] && ws[addr].v !== undefined) ws[addr].z = '0.00%'; }
         if(idxBase !== undefined && (idxPrevVal !== undefined || idxCurVal !== undefined)){
           const addrBase = XLSX.utils.encode_cell({r:R, c: idxBase});
-          const baseCell = ws[addrBase];
-          const base = baseCell && baseCell.v ? String(baseCell.v).toUpperCase() : '';
-          // if base is CTR -> percent, else currency
+          const baseCell = ws[addrBase]; const base = baseCell && baseCell.v ? String(baseCell.v).toUpperCase() : '';
           const prevAddr = idxPrevVal !== undefined ? XLSX.utils.encode_cell({r:R, c: idxPrevVal}) : null;
           const curAddr  = idxCurVal !== undefined ? XLSX.utils.encode_cell({r:R, c: idxCurVal}) : null;
           if(base === 'CTR'){
@@ -499,11 +534,7 @@
           }
         }
       }
-
-      // set sensible column widths and final layout
-      ws['!cols'] = [
-        {wch:28},{wch:14},{wch:22},{wch:18},{wch:12},{wch:10},{wch:12},{wch:12},{wch:42}
-      ];
+      ws['!cols'] = [ {wch:28},{wch:14},{wch:22},{wch:18},{wch:12},{wch:10},{wch:12},{wch:42} ];
     }
   </script>
 </body>
