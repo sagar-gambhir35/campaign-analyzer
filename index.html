@@ -1,0 +1,510 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Campaign Monthly Spike/Drop Analyzer — Final (Fixed)</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/modern-css-reset/dist/reset.min.css">
+  <style>
+    :root{
+      --bg:#0f172a;--card:#0b1220;--accent:#06b6d4;--muted:#94a3b8;--green:#16a34a;--red:#dc2626;
+    }
+    body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial;background:linear-gradient(180deg,#071028 0%, #071022 60%);color:#e6eef8;padding:20px}
+    .container{max-width:1250px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+    h1{font-size:20px;margin:0}
+    .controls{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+    .card{background:rgba(255,255,255,0.03);padding:14px;border-radius:10px}
+    .chooseFileLabel{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021024;padding:12px 20px;border-radius:10px;font-weight:700;cursor:pointer;box-shadow:0 8px 20px rgba(2,6,23,0.5)}
+    .thresholds{display:flex;gap:8px;align-items:flex-end;padding:8px}
+    .thresholds strong{display:block;color:#e6eef8;margin-bottom:6px}
+    .thresholds input{width:90px;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:transparent;color:inherit}
+    button{background:linear-gradient(90deg,var(--accent),#7c3aed);border:none;padding:8px 12px;border-radius:8px;color:#021024;font-weight:600;cursor:pointer}
+    .tabs{display:flex;gap:8px;margin-top:8px}
+    .tabBtn{background:transparent;border:1px solid rgba(255,255,255,0.06);padding:8px 12px;border-radius:8px;cursor:pointer;color:var(--muted)}
+    .tabBtn.active{background:linear-gradient(90deg,var(--accent),#7c3aed);color:#021024}
+    table{width:100%;border-collapse:collapse;margin-top:8px}
+    th,td{padding:8px 10px;text-align:left;border-bottom:1px dashed rgba(255,255,255,0.04);font-size:13px;vertical-align:top}
+    th{color:var(--muted);font-weight:600}
+    .green{color:var(--green);font-weight:700}
+    .red{color:var(--red);font-weight:700}
+    #statusMsg{margin-top:10px;color:var(--muted)}
+    .note{color:#dbeafe;font-size:13px}
+    footer{margin-top:18px;color:var(--muted);font-size:13px;text-align:center}
+    .small{font-size:12px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>📊 Campaign Monthly Spike/Drop Analyzer — Final</h1>
+        <div class="small">Upload .xlsx (Month, Campaign, Spend, Impressions, Clicks). CTR, CPM, CPC auto-calculated. Export includes Good / Mixed / Overall Decline + Description + Raw Data.</div>
+      </div>
+
+      <div class="controls">
+        <label class="chooseFileLabel">📂 Choose File
+          <input id="file" type="file" accept=".xls,.xlsx,.csv" />
+        </label>
+
+        <div class="card thresholds">
+          <strong>Thresholds (%)</strong>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div><label class="small">Spend</label><input id="th_spend" type="number" min="0" value="50"></div>
+            <div><label class="small">CPC</label><input id="th_cpc" type="number" min="0" value="50"></div>
+            <div><label class="small">CPM</label><input id="th_cpm" type="number" min="0" value="50"></div>
+            <div><label class="small">CTR</label><input id="th_ctr" type="number" min="0" value="50"></div>
+          </div>
+        </div>
+
+        <div class="card" style="display:flex;flex-direction:column;gap:6px">
+          <label class="small"><strong>Comparison Mode</strong></label>
+          <select id="compareMode" style="padding:6px;border-radius:8px;background:transparent;color:#e6eef8;border:1px solid rgba(255,255,255,0.08);">
+            <option value="previous">Current vs Previous Month</option>
+            <option value="average">Current vs Avg of All Previous Months</option>
+          </select>
+        </div>
+
+        <button id="analyze">🔍 Analyze</button>
+        <button id="downloadSummary" style="display:none">⬇️ Download Summary</button>
+      </div>
+
+    </header>
+
+    <div id="statusMsg">Load a file to start.</div>
+
+    <div id="previewSection" class="card" style="margin-top:12px;display:none">
+      <h3 style="margin:0 0 8px 0">🔎 File Preview (first 5 rows)</h3>
+      <div style="overflow:auto"><table id="previewTable"><thead></thead><tbody></tbody></table></div>
+    </div>
+
+    <div style="margin-top:12px;display:flex;align-items:center;justify-content:space-between">
+      <div class="tabs">
+        <button class="tabBtn active" data-tab="good" id="tabGood">Good</button>
+        <button class="tabBtn" data-tab="mixed" id="tabMixed">Mixed</button>
+        <button class="tabBtn" data-tab="decline" id="tabDecline">Overall Decline</button>
+      </div>
+      <div class="small">Sorted by absolute % change (desc)</div>
+    </div>
+
+    <div id="summarySection" class="card" style="margin-top:12px;display:none">
+      <h3 style="margin:0 0 8px 0">📈 Final Month Summary (collapsed)</h3>
+      <div style="overflow:auto">
+        <table id="summaryTable">
+          <thead>
+            <tr><th>Campaign</th><th>Base Metric</th><th>Previous</th><th>Current</th><th>% Change</th><th>Direction</th><th>Performance</th><th>Note</th></tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+
+    <footer>Campaigns with “Drive New Website Visitors” and “Re-Engage Website Visitors” are merged.</footer>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script>
+    /* ---------- helpers ---------- */
+    function showStatus(msg, color='var(--muted)'){const s=document.getElementById('statusMsg'); s.style.color=color; s.textContent = msg;}
+    function parseMonthToKey(v){
+      try{
+        if(!v) return null;
+        if(v instanceof Date && !isNaN(v)) return `${v.getFullYear()}-${String(v.getMonth()+1).padStart(2,'0')}`;
+        if(typeof v === 'number'){ const d=new Date(Date.UTC(1899,11,30) + v*86400000); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+        const s = String(v).trim(); const d = new Date(s);
+        if(!isNaN(d)) return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+        return s;
+      }catch{return v;}
+    }
+    function excelSerialToDate(serial){
+      // convert Excel serial (assumes 1900 date system; Excel incorrectly treats 1900 as leap year but using standard conversion works for typical serials)
+      return new Date(Date.UTC(1899,11,30) + serial * 86400000);
+    }
+    function pnum(v){ if(v===''||v==null) return 0; const n=Number(String(v).replace(/[^0-9eE+\-.]/g,'')); return isNaN(n)?0:n; }
+    function fmt(val, metric){ if(metric === 'CTR') return val.toFixed(2)+'%'; if(['CPM','CPC','Spend'].includes(metric)) return '$'+val.toFixed(2); return val.toFixed(2); }
+
+    /* Note builder with consistent verbs and capitalization.
+       baseMetric bolded in HTML if forHtml=true.
+    */
+    function buildNote(changeMap, baseMetric, forHtml){
+      const items = Object.keys(changeMap)
+        .map(m => ({ m: m.toUpperCase(), pct: changeMap[m] }))
+        .filter(x => x.pct !== null && !isNaN(x.pct) && Math.abs(x.pct) > 0)
+        .sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct));
+
+      if(!items.length) return '';
+      const main = items[0];
+      const mainVerb = main.pct > 0 ? 'spiked' : 'dropped';
+      const mainTextMetric = (forHtml && main.m === baseMetric.toUpperCase()) ? `<strong>${main.m}</strong>` : main.m;
+      let text = `${mainTextMetric} ${mainVerb} by ${Math.abs(main.pct).toFixed(2)}%`;
+      if(items.length > 1){
+        const restParts = items.slice(1).map(x => {
+          const verb = x.pct > 0 ? 'increased' : 'decreased';
+          return `${x.m} ${verb} by ${Math.abs(x.pct).toFixed(2)}%`;
+        });
+        if(restParts.length === 1) text += `; ${restParts[0]}`;
+        else if(restParts.length === 2) text += `; ${restParts[0]} and ${restParts[1]}`;
+        else text += `; ${restParts.slice(0,restParts.length-1).join(', ')} and ${restParts[restParts.length-1]}`;
+      }
+      return text;
+    }
+
+    function metricPerformance(metric, pctChange){
+      if(pctChange === null || isNaN(pctChange)) return 'Neutral';
+      if(['Spend','CTR'].includes(metric)) return pctChange > 0 ? 'Good' : 'Bad';
+      if(['CPM','CPC'].includes(metric)) return pctChange > 0 ? 'Bad' : 'Good';
+      return 'Neutral';
+    }
+
+    /* ---------- state ---------- */
+    let rawData = [];
+    let processed = { good: [], mixed: [], decline: [] };
+
+    /* ---------- file load ---------- */
+    document.getElementById('file').addEventListener('change', e => {
+      const f = e.target.files[0];
+      if(!f){ showStatus('❌ No file selected','var(--red)'); return; }
+      showStatus('📥 Reading file...','var(--accent)');
+      const r = new FileReader();
+      r.onload = ev => {
+        try{
+          const wb = XLSX.read(ev.target.result, {type:'array'});
+          const ws = wb.Sheets[wb.SheetNames[0]];
+          rawData = XLSX.utils.sheet_to_json(ws, { defval: '' });
+          if(!rawData.length) throw new Error('Empty sheet');
+          showStatus(`✅ Loaded ${rawData.length} rows from ${wb.SheetNames[0]}`, 'var(--green)');
+          const keys = Object.keys(rawData[0]);
+          const head = document.querySelector('#previewTable thead');
+          const body = document.querySelector('#previewTable tbody');
+          head.innerHTML = '<tr>' + keys.map(k=>`<th>${k}</th>`).join('') + '</tr>';
+          body.innerHTML = '';
+          rawData.slice(0,5).forEach(rw => { body.innerHTML += `<tr>${keys.map(k=>`<td>${rw[k]}</td>`).join('')}</tr>`; });
+          document.getElementById('previewSection').style.display = 'block';
+        }catch(err){
+          showStatus('❌ Failed to parse file: '+err.message,'var(--red)');
+          rawData = [];
+        }
+      };
+      r.readAsArrayBuffer(f);
+    });
+
+    /* tab switching */
+    const tabBtns = document.querySelectorAll('.tabBtn');
+    tabBtns.forEach(b => b.addEventListener('click', () => {
+      tabBtns.forEach(x => x.classList.remove('active'));
+      b.classList.add('active');
+      renderTableForTab(b.dataset.tab);
+    }));
+
+    function renderTableForTab(tab){
+      const tbody = document.querySelector('#summaryTable tbody');
+      tbody.innerHTML = '';
+      const arr = (tab === 'good') ? processed.good : (tab === 'mixed' ? processed.mixed : processed.decline);
+      arr.forEach(s => {
+        const tr = document.createElement('tr');
+        const colorClass = ((s.BaseMetric === 'Spend' || s.BaseMetric === 'CTR') ? (s.Direction === 'Spike' ? 'green' : 'red') : (s.Direction === 'Spike' ? 'red' : 'green'));
+        const perfClass = s.Performance === 'Good' ? 'green' : (s.Performance === 'Bad' ? 'red' : '');
+        const htmlNote = buildNote(s.changeMap, s.BaseMetric, true);
+        tr.innerHTML = `<td>${s.Campaign}</td>
+                        <td>${s.BaseMetric}</td>
+                        <td>${s.PrevLabel}: ${fmt(s.PrevVal, s.BaseMetric)}</td>
+                        <td>${s.CurMonth}: ${fmt(s.CurVal, s.BaseMetric)}</td>
+                        <td>${s.Change.toFixed(2)}%</td>
+                        <td class="${colorClass}">${s.Direction}</td>
+                        <td class="${perfClass}">${s.Performance}</td>
+                        <td class="note">${htmlNote}</td>`;
+        tbody.appendChild(tr);
+      });
+    }
+
+    /* analysis */
+    document.getElementById('analyze').addEventListener('click', () => {
+      if(!rawData.length){ showStatus('⚠️ Please upload a valid file first.','var(--red)'); return; }
+      showStatus('🔍 Analyzing...','var(--accent)');
+
+      try{
+        const headers = Object.keys(rawData[0]);
+        const required = ['Month','Campaign','Spend','Impressions','Clicks'];
+        const colMap = {};
+        for(const c of required){
+          const f = headers.find(h => h.toLowerCase() === c.toLowerCase());
+          if(!f){ showStatus(`❌ Missing column: ${c}`,'var(--red)'); return; }
+          colMap[c] = f;
+        }
+
+        // aggregate
+        const campaigns = {};
+        const months = new Set();
+        rawData.forEach(r => {
+          let name = String(r[colMap['Campaign']]).trim();
+          name = name.replace(/ - (Drive New|Re-Engage) Website Visitors$/i,'');
+          const m = parseMonthToKey(r[colMap['Month']]);
+          months.add(m);
+          if(!campaigns[name]) campaigns[name] = {};
+          if(!campaigns[name][m]) campaigns[name][m] = { Spend:0, Impressions:0, Clicks:0 };
+          const c = campaigns[name][m];
+          c.Spend += pnum(r[colMap['Spend']]);
+          c.Impressions += pnum(r[colMap['Impressions']]);
+          c.Clicks += pnum(r[colMap['Clicks']]);
+        });
+
+        // derived
+        Object.values(campaigns).forEach(mths => {
+          Object.values(mths).forEach(v => {
+            v.CTR = v.Impressions ? (v.Clicks / v.Impressions) * 100 : 0;
+            v.CPM = v.Impressions ? (v.Spend / v.Impressions) * 1000 : 0;
+            v.CPC = v.Clicks ? (v.Spend / v.Clicks) : 0;
+          });
+        });
+
+        const monthList = Array.from(months).filter(Boolean).sort();
+        if(!monthList.length){ showStatus('❌ Could not parse any valid months','var(--red)'); return; }
+        const lastMonth = monthList[monthList.length-1];
+        const ths = { Spend:+th_spend.value||0, CPC:+th_cpc.value||0, CPM:+th_cpm.value||0, CTR:+th_ctr.value||0 };
+        const mode = document.getElementById('compareMode').value;
+
+        // percent changes
+        const changeRecords = {}, baselineRecords = {};
+        Object.keys(campaigns).forEach(camp => {
+          const mths = campaigns[camp];
+          const sorted = monthList.filter(m => mths[m]);
+          if(sorted.length < 2) return;
+          const curr = mths[sorted[sorted.length-1]];
+          let baseline = {};
+          if(mode === 'average'){
+            const prevMonths = sorted.slice(0,-1);
+            const cnt = prevMonths.length;
+            const sums = prevMonths.reduce((acc, mm) => {
+              const val = mths[mm];
+              acc.Spend += (val.Spend||0);
+              acc.CPM += (val.CPM||0);
+              acc.CPC += (val.CPC||0);
+              acc.CTR += (val.CTR||0);
+              return acc;
+            }, {Spend:0, CPM:0, CPC:0, CTR:0});
+            baseline.Spend = sums.Spend / cnt;
+            baseline.CPM = sums.CPM / cnt;
+            baseline.CPC = sums.CPC / cnt;
+            baseline.CTR = sums.CTR / cnt;
+          } else {
+            const prev = mths[sorted[sorted.length-2]];
+            baseline.Spend = prev.Spend;
+            baseline.CPM = prev.CPM;
+            baseline.CPC = prev.CPC;
+            baseline.CTR = prev.CTR;
+          }
+          baselineRecords[camp] = {...baseline};
+          const rec = { Spend:null, CPC:null, CPM:null, CTR:null };
+          if(typeof baseline.Spend === 'number' && baseline.Spend !== 0) rec.Spend = ((curr.Spend - baseline.Spend) / baseline.Spend) * 100;
+          if(typeof baseline.CPC === 'number' && baseline.CPC !== 0) rec.CPC = ((curr.CPC - baseline.CPC) / baseline.CPC) * 100;
+          if(typeof baseline.CPM === 'number' && baseline.CPM !== 0) rec.CPM = ((curr.CPM - baseline.CPM) / baseline.CPM) * 100;
+          if(typeof baseline.CTR === 'number' && baseline.CTR !== 0) rec.CTR = ((curr.CTR - baseline.CTR) / baseline.CTR) * 100;
+          changeRecords[camp] = rec;
+        });
+
+        // significant
+        const significant = {};
+        Object.keys(changeRecords).forEach(camp => {
+          const rec = changeRecords[camp];
+          const sigs = [];
+          ['Spend','CPC','CPM','CTR'].forEach(metric => {
+            const pct = rec[metric];
+            if(pct === null || isNaN(pct)) return;
+            if(Math.abs(pct) >= (ths[metric] || 0)){
+              const perf = metricPerformance(metric, pct);
+              sigs.push({ metric, pct, perf });
+            }
+          });
+          if(sigs.length) significant[camp] = sigs;
+        });
+
+        // collapsed rows
+        const collapsedRows = [];
+        Object.keys(significant).forEach(camp => {
+          const sigs = significant[camp];
+          sigs.sort((a,b) => Math.abs(b.pct) - Math.abs(a.pct));
+          const base = sigs[0];
+          const mths = campaigns[camp];
+          const sorted = monthList.filter(m => mths[m]);
+          const prevLabel = mode === 'average' ? `Avg of ${sorted.slice(0,-1).length} months` : sorted[sorted.length-2];
+          const prevVal = mode === 'average' ? (sorted.slice(0,-1).reduce((a,b)=>a + mths[b][base.metric],0) / sorted.slice(0,-1).length) : mths[sorted[sorted.length-2]][base.metric];
+          const currVal = mths[sorted[sorted.length-1]][base.metric];
+          const change = base.pct;
+          const direction = change > 0 ? 'Spike' : 'Drop';
+
+          const changeMap = {};
+          ['Spend','CPC','CPM','CTR'].forEach(m => {
+            const found = sigs.find(s => s.metric === m);
+            changeMap[m] = found ? found.pct : null;
+          });
+
+          const goods = sigs.filter(s => metricPerformance(s.metric, s.pct) === 'Good').length;
+          const bads = sigs.filter(s => metricPerformance(s.metric, s.pct) === 'Bad').length;
+          let performance = 'Mixed';
+          if(goods > 0 && bads === 0) performance = 'Good';
+          else if(bads > 0 && goods === 0) performance = 'Bad';
+
+          const notePlain = buildNote(changeMap, base.metric, false);
+          const noteHtml = buildNote(changeMap, base.metric, true);
+
+          collapsedRows.push({
+            Campaign: camp,
+            BaseMetric: base.metric,
+            PrevLabel: prevLabel,
+            PrevVal: prevVal,
+            CurMonth: lastMonth,
+            CurVal: currVal,
+            Change: change,
+            Direction: direction,
+            Performance: performance,
+            NotePlain: notePlain,
+            NoteHtml: noteHtml,
+            changeMap
+          });
+        });
+
+        // partition
+        const good = [], mixed = [], decline = [];
+        collapsedRows.forEach(r => {
+          if(r.Performance === 'Good') good.push(r);
+          else if(r.Performance === 'Bad') decline.push(r);
+          else mixed.push(r);
+        });
+
+        const sortByAbs = arr => arr.sort((a,b)=>Math.abs(b.Change) - Math.abs(a.Change));
+        sortByAbs(good); sortByAbs(mixed); sortByAbs(decline);
+        processed = { good, mixed, decline };
+
+        document.getElementById('summarySection').style.display = (good.length+mixed.length+decline.length) ? 'block' : 'none';
+        renderTableForTab('good');
+        document.getElementById('tabGood').textContent = `Good (${good.length})`;
+        document.getElementById('tabMixed').textContent = `Mixed (${mixed.length})`;
+        document.getElementById('tabDecline').textContent = `Overall Decline (${decline.length})`;
+
+        showStatus(`✅ Analysis complete. Good: ${good.length}, Mixed: ${mixed.length}, Overall Decline: ${decline.length}.`, 'var(--green)');
+        document.getElementById('downloadSummary').style.display = 'inline-block';
+        document.getElementById('downloadSummary').onclick = () => buildAndDownloadExcel({good,mixed,decline, rawData, mode, ths});
+      }catch(err){
+        showStatus('❌ Analysis failed: '+err.message,'var(--red)');
+      }
+    });
+
+    /* ---------- Excel builder ---------- */
+    function buildAndDownloadExcel({good,mixed,decline, rawData, mode, ths}){
+      const wb = XLSX.utils.book_new();
+
+      function makeSheetFromRows(rows){
+        const sheetData = rows.map(r => ({
+          Campaign: r.Campaign,
+          Base_Metric: r.BaseMetric,
+          Previous: r.PrevLabel,
+          Previous_Value: r.PrevVal,
+          Current_Month: r.CurMonth,
+          Current_Value: r.CurVal,
+          Change_Percent: r.Change / 100,
+          Direction: r.Direction,
+          Performance: r.Performance,
+          Note: r.NotePlain
+        }));
+        return XLSX.utils.json_to_sheet(sheetData);
+      }
+
+      // Good
+      const wsGood = makeSheetFromRows(good);
+      formatSheetColumnsPerRow(wsGood);
+      XLSX.utils.book_append_sheet(wb, wsGood, 'Good Performance');
+
+      // Mixed
+      const wsMixed = makeSheetFromRows(mixed);
+      formatSheetColumnsPerRow(wsMixed);
+      XLSX.utils.book_append_sheet(wb, wsMixed, 'Mixed Performance');
+
+      // Decline
+      const wsDecline = makeSheetFromRows(decline);
+      formatSheetColumnsPerRow(wsDecline);
+      XLSX.utils.book_append_sheet(wb, wsDecline, 'Overall Decline');
+
+      // Description (removed Prepared By and Notes lines)
+      const generationDate = (new Date()).toLocaleString('en-GB', { timeZone: 'Asia/Kolkata', year:'numeric', month:'short', day:'numeric' });
+      const descRows = [
+        { Property: 'Report Name', Value: 'Campaign Monthly Spike/Drop Analyzer' },
+        { Property: 'Generated On', Value: generationDate },
+        { Property: 'Comparison Mode', Value: mode === 'average' ? 'Current vs Avg of All Previous Months' : 'Current vs Previous Month' },
+        { Property: 'Thresholds (Spend, CPC, CPM, CTR %)', Value: `${ths.Spend}%, ${ths.CPC}%, ${ths.CPM}%, ${ths.CTR}%` },
+        { Property: 'Metric Definitions', Value: 'Spend, Impressions, Clicks are raw. CTR = Clicks/Impressions (%). CPM = Spend/Impressions*1000. CPC = Spend/Clicks.' },
+        { Property: 'Performance Logic', Value: 'Spend & CTR: Spike = Good, Drop = Bad. CPM & CPC: Spike = Bad, Drop = Good.' },
+        { Property: 'Sheet Descriptions', Value: 'Good Performance: all significant metrics Good. Mixed Performance: mix of Good & Bad. Overall Decline: all significant metrics Bad.' }
+      ];
+      const wsDesc = XLSX.utils.json_to_sheet(descRows, { header: ['Property','Value'] });
+      wsDesc['!cols'] = [{ wch:30 }, { wch:70 }];
+      XLSX.utils.book_append_sheet(wb, wsDesc, 'Description');
+
+      // Raw Data: convert Excel serial dates (numbers) in 'Month' to JS Date objects for proper formatting
+      const rawCopy = rawData.map(row => {
+        const r = {};
+        Object.keys(row).forEach(k => {
+          let v = row[k];
+          // if column is "Month" (case-insensitive), convert numeric serial to Date
+          if(k.toLowerCase() === 'month' && typeof v === 'number' && v > 0){
+            // convert serial -> Date
+            v = excelSerialToDate(v);
+          }
+          r[k] = v;
+        });
+        return r;
+      });
+      const wsRaw = XLSX.utils.json_to_sheet(rawCopy);
+      // set widths
+      wsRaw['!cols'] = Object.keys(rawCopy[0] || {}).map(k => ({ wch: Math.min(Math.max(String(k).length, 12), 40) }));
+      XLSX.utils.book_append_sheet(wb, wsRaw, 'Raw Data');
+
+      XLSX.writeFile(wb, 'Campaign_Spike_Summary.xlsx');
+    }
+
+    // Format sheet columns per row based on Base_Metric
+    function formatSheetColumnsPerRow(ws){
+      if(!ws || !ws['!ref']) return;
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      const headers = {};
+      for(let C=range.s.c; C<=range.e.c; ++C){
+        const addr = XLSX.utils.encode_cell({r: range.s.r, c: C});
+        const cell = ws[addr];
+        if(cell && cell.v) headers[cell.v] = C;
+      }
+      const idxBase = headers['Base_Metric'];
+      const idxPrevVal = headers['Previous_Value'];
+      const idxCurVal = headers['Current_Value'];
+      const idxChange = headers['Change_Percent'];
+
+      for(let R = range.s.r + 1; R <= range.e.r; ++R){
+        // format change percent
+        if(idxChange !== undefined){
+          const addr = XLSX.utils.encode_cell({r:R, c: idxChange});
+          if(ws[addr] && ws[addr].v !== undefined) ws[addr].z = '0.00%';
+        }
+        // decide formatting for Prev/Cur based on Base_Metric
+        if(idxBase !== undefined && (idxPrevVal !== undefined || idxCurVal !== undefined)){
+          const addrBase = XLSX.utils.encode_cell({r:R, c: idxBase});
+          const baseCell = ws[addrBase];
+          const base = baseCell && baseCell.v ? String(baseCell.v).toUpperCase() : '';
+          // if base is CTR -> percent, else currency
+          const prevAddr = idxPrevVal !== undefined ? XLSX.utils.encode_cell({r:R, c: idxPrevVal}) : null;
+          const curAddr  = idxCurVal !== undefined ? XLSX.utils.encode_cell({r:R, c: idxCurVal}) : null;
+          if(base === 'CTR'){
+            if(prevAddr && ws[prevAddr] && ws[prevAddr].v !== undefined) ws[prevAddr].z = '0.00%';
+            if(curAddr && ws[curAddr] && ws[curAddr].v !== undefined) ws[curAddr].z = '0.00%';
+          } else {
+            if(prevAddr && ws[prevAddr] && ws[prevAddr].v !== undefined) ws[prevAddr].z = '$0.00';
+            if(curAddr && ws[curAddr] && ws[curAddr].v !== undefined) ws[curAddr].z = '$0.00';
+          }
+        }
+      }
+
+      // set sensible column widths and final layout
+      ws['!cols'] = [
+        {wch:28},{wch:14},{wch:22},{wch:18},{wch:12},{wch:10},{wch:12},{wch:12},{wch:42}
+      ];
+    }
+  </script>
+</body>
+</html>
